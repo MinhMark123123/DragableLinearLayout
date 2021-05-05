@@ -1,19 +1,21 @@
 package m.n.dragablelinearlayout
 
 import android.os.Bundle
+import android.util.Log
 import android.view.*
 import android.widget.Button
 import android.widget.HorizontalScrollView
-import android.widget.RelativeLayout
-import androidx.core.view.get
 import androidx.fragment.app.Fragment
+import m.n.dragablelinearlayout.drag.ItemDragContainer
+import m.n.dragablelinearlayout.drag.ItemDragViewHolder
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class FirstFragment : Fragment() {
-    lateinit var containerLayout: RelativeLayout
+    lateinit var containerLayout: ItemDragContainer
     lateinit var button: Button
+    lateinit var buttonRemove: Button
     private var listView: ArrayList<View> = ArrayList()
     private var listViewId = arrayListOf(
         R.layout.item_drag_red,
@@ -42,69 +44,23 @@ class FirstFragment : Fragment() {
             horizontalScrollView = findViewById(R.id.horizontal_scroller)
             containerLayout = findViewById(R.id.rev_container)
             button = findViewById(R.id.button_first)
+            buttonRemove = findViewById(R.id.button_remove)
+            containerLayout.sycToScrollView(horizontalScrollView)
         }
-        /*if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            horizontalScrollView.setOnScrollChangeListener { view, i, i2, i3, i4 ->  }
-        }else{
-            horizontalScrollView.setonscr
-        }*/
         button.setOnClickListener {
             if (containerLayout.childCount >= listView.size) {
                 return@setOnClickListener
             }
             val itemView = listView[currentPosition]
-            val params = RelativeLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            params.leftMargin = 16
-            if (containerLayout.childCount != 0) {
-                val item = containerLayout[containerLayout.childCount - 1]
-                params.topMargin = (item.y + item.height + 16).toInt()
-            } else {
-                params.topMargin = 16
-            }
-            (itemView as ItemDragViewHolder).sycToScrollView(horizontalScrollView)
-            containerLayout.addView(itemView, params)
+            containerLayout.addItemView(itemView as ItemDragViewHolder)
             currentPosition++
         }
-        containerLayout.setOnDragListener(onDragListener)
-    }
-
-    val onDragListener: View.OnDragListener = object : View.OnDragListener {
-        override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
-            if (view == null) return false
-            if (dragEvent == null) return false
-            when (dragEvent.action) {
-                DragEvent.ACTION_DRAG_LOCATION -> {
-                    val x = Math.round(dragEvent.x)
-                    val translatedX = (x - horizontalScrollView.scrollX).toInt()
-                    val threshold = (dragEvent.localState as View).width / 2
-                    // make a scrolling up due the y has passed the threshold
-                    // make a scrolling up due the y has passed the threshold
-                    if (translatedX < threshold) {
-                        // make a scroll up by 30 px
-                        horizontalScrollView.smoothScrollBy(-30, 0)
-                    }
-                    // make a autoscrolling down due y has passed the 500 px border
-                    if (translatedX + threshold > 400) {
-                        // make a scroll down by 30 px
-                        horizontalScrollView.smoothScrollBy(30, 0)
-                    }
-
-                }
-                DragEvent.ACTION_DROP -> {
-                    val X: Float = dragEvent.x
-                    val Y: Float = dragEvent.y
-                    val localView = dragEvent.localState as View
-                    localView.x = (X - localView.width / 2)
-                    localView.y = (Y - localView.height / 2)
-                    localView.visibility = View.VISIBLE
-                }
-            }
-            return true
+        buttonRemove.setOnClickListener {
+            containerLayout.removeItemView(0)
         }
+        containerLayout.onViewDrop { view, index -> Log.e("mmm", "on item : $index") }
     }
+
 
 /*
     private fun updateListener() {

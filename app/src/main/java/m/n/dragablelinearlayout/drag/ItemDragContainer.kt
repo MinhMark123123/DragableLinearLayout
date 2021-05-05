@@ -1,0 +1,92 @@
+package m.n.dragablelinearlayout.drag
+
+import android.content.Context
+import android.util.AttributeSet
+import android.view.DragEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.HorizontalScrollView
+import android.widget.RelativeLayout
+import androidx.core.view.children
+import androidx.core.view.get
+import kotlin.math.roundToInt
+
+class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
+    private var scrollView: HorizontalScrollView? = null
+    private var listenerOnViewDrop: ((View, Int) -> Unit)? = null
+
+    fun sycToScrollView(scrollView: HorizontalScrollView) {
+        this.scrollView = scrollView
+        setOnDragListener(onDragListener)
+    }
+
+    fun addItemView(view: ItemDragViewHolder) {
+        val params = LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = 16
+        if (childCount != 0) {
+            val item = getChildAt(childCount - 1)
+            params.topMargin = (item.y + item.height + 16).toInt()
+        } else {
+            params.topMargin = 16
+        }
+        addView(view, params)
+        view.viewIndex = childCount - 1
+    }
+
+    fun removeItemView(index: Int) {
+        if (childCount <= 1) return
+        if (index in childCount..-1) return
+        removeViewAt(index)
+        if (index in childCount..-1) return
+        for (viewIndex in index until childCount) {
+            val itView = getChildAt(viewIndex)
+            val params: RelativeLayout.LayoutParams = itView.layoutParams as LayoutParams
+            params.topMargin = params.topMargin - itView.height - 16
+            itView.layoutParams = params
+            itView.invalidate()
+        }
+    }
+
+    fun onViewDrop(listener: (view: View, index: Int) -> Unit) {
+        listenerOnViewDrop = listener
+    }
+
+    val onDragListener: View.OnDragListener = object : View.OnDragListener {
+        override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
+            if (view == null) return false
+            if (dragEvent == null) return false
+            when (dragEvent.action) {
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    val x = dragEvent.x.roundToInt()
+                    val translatedX = (x - (scrollView?.scrollX ?: 0)).toInt()
+                    val threshold = (dragEvent.localState as View).width / 2
+                    // make a scrolling up due the y has passed the threshold
+                    if (translatedX < threshold) {
+                        // make a scroll up by 30 px
+                        scrollView?.smoothScrollBy(-20, 0)
+                    } else if (translatedX + threshold > 500) {
+                        // make a scroll down by 30 px
+                        scrollView?.smoothScrollBy(20, 0)
+                    }
+
+                }
+                DragEvent.ACTION_DROP -> {
+                    val X: Float = dragEvent.x
+                    val Y: Float = dragEvent.y
+                    val localView = dragEvent.localState as View
+                    localView.x = (X - localView.width / 2)
+                    localView.y = (Y - localView.height / 2)
+                    localView.visibility = View.VISIBLE
+                    listenerOnViewDrop?.invoke(
+                        localView,
+                        (localView as ItemDragViewHolder).viewIndex
+                    )
+                }
+            }
+            return true
+        }
+    }
+}
