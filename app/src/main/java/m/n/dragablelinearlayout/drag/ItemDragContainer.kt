@@ -54,7 +54,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         listenerOnViewDrop = listener
     }
 
-    val onDragListener: View.OnDragListener = object : View.OnDragListener {
+    private val onDragListener: OnDragListener = object : OnDragListener {
         override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
             if (view == null) return false
             if (dragEvent == null) return false
@@ -74,16 +74,20 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
 
                 }
                 DragEvent.ACTION_DROP -> {
-                    val X: Float = dragEvent.x
-                    val Y: Float = dragEvent.y
+                    val x: Float = dragEvent.x
+                    val y: Float = dragEvent.y
                     val localView = dragEvent.localState as View
-                    localView.x = (X - localView.width / 2)
-                    localView.y = (Y - localView.height / 2)
+                    localView.x = (x - localView.width / 2)
+                    localView.y = (y - localView.height / 2)
                     localView.visibility = View.VISIBLE
                     listenerOnViewDrop?.invoke(
                         localView,
                         (localView as ItemDragViewHolder).viewIndex
                     )
+                }
+                DragEvent.ACTION_DRAG_ENDED -> {
+                    val localView = dragEvent.localState as View
+                    localView.visibility = View.VISIBLE
                 }
             }
             return true
