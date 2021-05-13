@@ -14,6 +14,7 @@ import kotlin.math.roundToInt
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
     private var scrollView: HorizontalScrollView? = null
     private var listenerOnViewDrop: ((View, Int) -> Unit)? = null
+    private var isExited = false
 
     fun sycToScrollView(scrollView: HorizontalScrollView) {
         this.scrollView = scrollView
@@ -58,9 +59,27 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
             if (view == null) return false
             if (dragEvent == null) return false
+            val localView = dragEvent.localState as ItemDragViewHolder
             when (dragEvent.action) {
+                DragEvent.ACTION_DRAG_EXITED -> {
+                    if (localView.visibility != View.VISIBLE) {
+                        //localView.visibility = View.VISIBLE
+                        localView.hideShadow()
+                        localView.invalidate()
+                    }
+                    isExited = true
+                }
+                DragEvent.ACTION_DRAG_ENTERED -> {
+                    if (localView.visibility == View.VISIBLE) {
+                        //localView.visibility = View.INVISIBLE
+                        localView.showShadow()
+                        localView.invalidate()
+                    }
+                    isExited = false
+                }
                 DragEvent.ACTION_DRAG_LOCATION -> {
                     val x = dragEvent.x.roundToInt()
+                    val y: Float = dragEvent.y
                     val translatedX = (x - (scrollView?.scrollX ?: 0)).toInt()
                     val threshold = (dragEvent.localState as View).width / 2
                     // make a scrolling up due the y has passed the threshold
@@ -71,15 +90,17 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                         // make a scroll down by 30 px
                         scrollView?.smoothScrollBy(20, 0)
                     }
-
+                    if (!isExited) {
+                        localView.x = (x.toFloat() - localView.width / 2)
+                        localView.y = (y - localView.height / 2)
+                    }
                 }
                 DragEvent.ACTION_DROP -> {
                     val x: Float = dragEvent.x
                     val y: Float = dragEvent.y
-                    val localView = dragEvent.localState as View
                     localView.x = (x - localView.width / 2)
                     localView.y = (y - localView.height / 2)
-                    localView.visibility = View.VISIBLE
+                    //localView.visibility = View.VISIBLE
                     listenerOnViewDrop?.invoke(
                         localView,
                         (localView as ItemDragViewHolder).viewIndex
@@ -87,7 +108,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                 }
                 DragEvent.ACTION_DRAG_ENDED -> {
                     val localView = dragEvent.localState as View
-                    localView.visibility = View.VISIBLE
+                    //localView.visibility = View.VISIBLE
                 }
             }
             return true
