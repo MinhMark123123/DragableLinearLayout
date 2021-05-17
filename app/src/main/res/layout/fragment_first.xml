@@ -25,7 +25,7 @@
         android:id="@+id/button_first"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/next"
+        android:text="Vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -47,5 +47,14 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="20dp"
         app:layout_constraintGuide_percent=".5" />
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:text="Horizontal"
+        app:layout_constraintEnd_toStartOf="@+id/button_first"
+        app:layout_constraintTop_toTopOf="@+id/button_first" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

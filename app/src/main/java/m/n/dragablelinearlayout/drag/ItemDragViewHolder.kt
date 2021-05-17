@@ -15,6 +15,11 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
     private var _isEnableDragging = false
     lateinit var myShadow: CustomViewShadow
     lateinit var imageViewShadow: ImageView
+    private var listenerOnViewSelected: ((View, Int) -> Unit)? = null
+    fun setOnViewSelectedListener(onViewSelected: (((View, Int) -> Unit))) {
+        listenerOnViewSelected = onViewSelected
+    }
+
     var viewIndex: Int = 0
         set(value: Int) {
             field = value
@@ -35,7 +40,7 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
             } else {
                 startDrag(data, myShadow, this, 0)
             }
-            //visibility = View.INVISIBLE
+            listenerOnViewSelected?.invoke(this, viewIndex)
             _isEnableDragging = true
             false
         }
@@ -43,12 +48,10 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
 
     fun hideShadow() {
         myShadow.view.alpha = 0f
-        //myShadow.isTransparent = true
     }
 
     fun showShadow() {
         myShadow.view.alpha = 1f
-        //myShadow.isTransparent = false
     }
 
     fun loadBitmapFromView(v: View): Bitmap {

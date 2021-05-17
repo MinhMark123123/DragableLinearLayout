@@ -52,13 +52,14 @@ class FirstFragment : Fragment() {
                 return@setOnClickListener
             }
             val itemView = listView[currentPosition]
-            containerLayout.addItemView(itemView as ItemDragViewHolder)
+            containerLayout.addItemViewVertical(itemView as ItemDragViewHolder)
             currentPosition++
         }
         buttonRemove.setOnClickListener {
             containerLayout.removeItemView(0)
         }
         containerLayout.onViewDrop { view, index -> Log.e("mmm", "on item : $index") }
+        containerLayout.setOnViewSelectedListener { view, i -> Log.e("mmm", "on item : $i") }
     }
 
 

@@ -14,14 +14,19 @@ import kotlin.math.roundToInt
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
     private var scrollView: HorizontalScrollView? = null
     private var listenerOnViewDrop: ((View, Int) -> Unit)? = null
+    private var listenerOnViewSelected: ((View, Int) -> Unit)? = null
     private var isExited = false
+
+    fun setOnViewSelectedListener(onViewSelected: (((View, Int) -> Unit))) {
+        listenerOnViewSelected = onViewSelected
+    }
 
     fun sycToScrollView(scrollView: HorizontalScrollView) {
         this.scrollView = scrollView
         setOnDragListener(onDragListener)
     }
 
-    fun addItemView(view: ItemDragViewHolder) {
+    fun addItemViewVertical(view: ItemDragViewHolder) {
         val params = LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -30,6 +35,23 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         if (childCount != 0) {
             val item = getChildAt(childCount - 1)
             params.topMargin = (item.y + item.height + 16).toInt()
+        } else {
+            params.topMargin = 16
+        }
+        view.setOnViewSelectedListener { itemView, i -> listenerOnViewSelected?.invoke(itemView, i) }
+        addView(view, params)
+        view.viewIndex = childCount - 1
+    }
+
+    fun addItemViewHorizontal(view: ItemDragViewHolder) {
+        val params = LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        if (childCount != 0) {
+            val item = getChildAt(childCount - 1)
+            params.topMargin = (item.y).toInt()
+            params.leftMargin = ((item.x + item.width) + 16).toInt()
         } else {
             params.topMargin = 16
         }
