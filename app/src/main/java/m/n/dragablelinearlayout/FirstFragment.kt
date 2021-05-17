@@ -15,6 +15,7 @@ import m.n.dragablelinearlayout.drag.ItemDragViewHolder
 class FirstFragment : Fragment() {
     lateinit var containerLayout: ItemDragContainer
     lateinit var button: Button
+    lateinit var horizontalButton: Button
     lateinit var buttonRemove: Button
     private var listView: ArrayList<View> = ArrayList()
     private var listViewId = arrayListOf(
@@ -44,6 +45,7 @@ class FirstFragment : Fragment() {
             horizontalScrollView = findViewById(R.id.horizontal_scroller)
             containerLayout = findViewById(R.id.rev_container)
             button = findViewById(R.id.button_first)
+            horizontalButton = findViewById(R.id.button_horizontal)
             buttonRemove = findViewById(R.id.button_remove)
             containerLayout.sycToScrollView(horizontalScrollView)
         }
@@ -55,11 +57,24 @@ class FirstFragment : Fragment() {
             containerLayout.addItemViewVertical(itemView as ItemDragViewHolder)
             currentPosition++
         }
+        horizontalButton.setOnClickListener {
+            if (containerLayout.childCount >= listView.size) {
+                return@setOnClickListener
+            }
+            val itemView = listView[currentPosition]
+            containerLayout.addItemViewHorizontal(itemView as ItemDragViewHolder)
+            currentPosition++
+        }
         buttonRemove.setOnClickListener {
             containerLayout.removeItemView(0)
         }
-        containerLayout.onViewDrop { view, index -> Log.e("mmm", "on item : $index") }
-        containerLayout.setOnViewSelectedListener { view, i -> Log.e("mmm", "on item : $i") }
+        containerLayout.onViewDrop { view, index -> Log.e("mmm", "on item dropped : $index") }
+        containerLayout.setOnViewSelectedListener { view, i ->
+            Log.e(
+                "mmm",
+                "on selected item : $i"
+            )
+        }
     }
 
 

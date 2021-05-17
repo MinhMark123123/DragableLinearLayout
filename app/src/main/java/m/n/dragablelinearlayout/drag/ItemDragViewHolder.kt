@@ -46,13 +46,6 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
         }
     }
 
-    fun hideShadow() {
-        myShadow.view.alpha = 0f
-    }
-
-    fun showShadow() {
-        myShadow.view.alpha = 1f
-    }
 
     fun loadBitmapFromView(v: View): Bitmap {
         val b = Bitmap.createBitmap(
