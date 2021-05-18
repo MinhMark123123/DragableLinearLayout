@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.RelativeLayout
-import androidx.core.view.children
 import kotlin.math.roundToInt
 
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
@@ -50,19 +49,6 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
             )
         }
         addView(view, params)
-        /*view.setOnDragListener { view, dragEvent ->
-            when (dragEvent.action) {
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    isOverlappingChildItem = false
-                    true
-                }
-                DragEvent.ACTION_DRAG_ENTERED -> {
-                    isOverlappingChildItem = true
-                    true
-                }
-                else -> true
-            }
-        }*/
         view.viewIndex = childCount - 1
     }
 

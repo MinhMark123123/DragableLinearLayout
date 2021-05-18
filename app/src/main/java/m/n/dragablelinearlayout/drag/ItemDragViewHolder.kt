@@ -6,16 +6,22 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Point
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import androidx.core.view.get
+import m.n.dragablelinearlayout.R
+import kotlin.math.roundToInt
 
 
-class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(context, attrs) {
+class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : LinearLayout(context, attrs) {
     private var _isEnableDragging = false
     lateinit var myShadow: CustomViewShadow
     lateinit var imageViewShadow: ImageView
     private var listenerOnViewSelected: ((View, Int) -> Unit)? = null
+    private var isInSelectedMode = false
     fun setOnViewSelectedListener(onViewSelected: (((View, Int) -> Unit))) {
         listenerOnViewSelected = onViewSelected
     }
@@ -27,6 +33,7 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
         get() = field
 
     init {
+        orientation = LinearLayout.HORIZONTAL
         setOnLongClickListener { it ->
             val data = ClipData.newPlainText(
                 "dot",
@@ -43,6 +50,50 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : FrameLayout(c
             listenerOnViewSelected?.invoke(this, viewIndex)
             _isEnableDragging = true
             false
+        }
+        setOnClickListener {
+            if (!isInSelectedMode) {
+                selectedMode()
+            } else {
+                unSelectedMode()
+            }
+        }
+    }
+
+    fun selectedMode() {
+        if (isInSelectedMode) return
+        isInSelectedMode = true
+        val leftView = LeftViewDrag(context = context)
+        val rightView = RightViewDrag(context = context)
+        leftView.setOnTouchListener(dragExpand)
+        rightView.setOnTouchListener(dragExpand)
+        addView(leftView, 0)
+        addView(rightView, childCount)
+        requestLayout()
+    }
+
+    fun unSelectedMode() {
+        if (!isInSelectedMode) return
+        isInSelectedMode = false
+        removeViewAt(0)
+        removeViewAt(childCount - 1)
+        requestLayout()
+    }
+
+    private val dragExpand = object : OnTouchListener {
+        override fun onTouch(view: View?, event: MotionEvent?): Boolean {
+            if (view == null) return false
+            if (event == null) return false
+            when (event.action) {
+                MotionEvent.ACTION_MOVE -> {
+                    get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
+                    get(1).requestLayout();
+                    return true
+                }
+                else -> {
+                    return true
+                }
+            }
         }
     }
 
@@ -71,3 +122,14 @@ class CustomViewShadow(var oView: View) : View.DragShadowBuilder(oView) {
     }
 }
 
+class LeftViewDrag(context: Context) : FrameLayout(context) {
+    init {
+        inflate(context, R.layout.left_button, this)
+    }
+}
+
+class RightViewDrag(context: Context) : FrameLayout(context) {
+    init {
+        inflate(context, R.layout.right_button, this)
+    }
+}
