@@ -8,7 +8,9 @@ import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import androidx.core.view.get
 import kotlin.math.roundToInt
 
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
@@ -90,68 +92,82 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
             if (view == null) return false
             if (dragEvent == null) return false
-            val localView = dragEvent.localState as ItemDragViewHolder
-            when (dragEvent.action) {
-                DragEvent.ACTION_DRAG_EXITED -> {
-                    if (localView.visibility != View.VISIBLE) {
-                        localView.invalidate()
+            var localView = dragEvent.localState
+            if (localView is ItemDragViewHolder) {
+                 localView = dragEvent.localState as ItemDragViewHolder
+                when (dragEvent.action) {
+                    DragEvent.ACTION_DRAG_EXITED -> {
+                        if (localView.visibility != View.VISIBLE) {
+                            localView.invalidate()
+                        }
+                        isExited = true
                     }
-                    isExited = true
-                }
-                DragEvent.ACTION_DRAG_ENTERED -> {
-                    if (localView.visibility == View.VISIBLE) {
-                        localView.invalidate()
+                    DragEvent.ACTION_DRAG_ENTERED -> {
+                        if (localView.visibility == View.VISIBLE) {
+                            localView.invalidate()
+                        }
+                        isExited = false
                     }
-                    isExited = false
-                }
-                DragEvent.ACTION_DRAG_LOCATION -> {
-                    val x = dragEvent.x.roundToInt()
-                    val y: Float = dragEvent.y
-                    val translatedX = (x - (scrollView?.scrollX ?: 0)).toInt()
-                    val threshold = (dragEvent.localState as View).width / 2
-                    // make a scrolling up due the y has passed the threshold
-                    if (translatedX < threshold) {
-                        // make a scroll up by 30 px
-                        scrollView?.smoothScrollBy(-20, 0)
-                    } else if (translatedX + threshold > 500) {
-                        // make a scroll down by 30 px
-                        scrollView?.smoothScrollBy(20, 0)
-                    }
-                    if (!isExited) {
-                        localView.x = (x.toFloat() - localView.width / 2)
-                        localView.y = (y - localView.height / 2)
-                    }
-                }
-                DragEvent.ACTION_DROP -> {
-                    var isOverlappingChildItem = false
-                    for (i in 0 until childCount) {
-                        val child: View = getChildAt(i)
-                        Log.d("mmm", "is overlap loop")
-                        if (child != localView) {
-                            Log.d("mmm", "is overlap action")
-                            if (isOverlap(localView, child)) {
-                                Log.d("mmm", "is overlap action = true")
-                                isOverlappingChildItem = true
-                                break
-                            }
+                    DragEvent.ACTION_DRAG_LOCATION -> {
+                        val x = dragEvent.x.roundToInt()
+                        val y: Float = dragEvent.y
+                        val translatedX = (x - (scrollView?.scrollX ?: 0)).toInt()
+                        val threshold = (dragEvent.localState as View).width / 2
+                        // make a scrolling up due the y has passed the threshold
+                        if (translatedX < threshold) {
+                            // make a scroll up by 30 px
+                            scrollView?.smoothScrollBy(-20, 0)
+                        } else if (translatedX + threshold > 500) {
+                            // make a scroll down by 30 px
+                            scrollView?.smoothScrollBy(20, 0)
+                        }
+                        if (!isExited) {
+                            localView.x = (x.toFloat() - localView.width / 2)
+                            localView.y = (y - localView.height / 2)
                         }
                     }
-                    Log.d("mmm", "is overlap $isOverlappingChildItem")
-                    if (isOverlappingChildItem) {
-                        swapBackOrigin(localView)
-                    } else {
-                        val x: Float = dragEvent.x
-                        val y: Float = dragEvent.y
-                        localView.x = (x - localView.width / 2)
-                        localView.y = (y - localView.height / 2)
-                        listenerOnViewDrop?.invoke(
-                            localView,
-                            localView.viewIndex
-                        )
-                    }
+                    DragEvent.ACTION_DROP -> {
+                        var isOverlappingChildItem = false
+                        for (i in 0 until childCount) {
+                            val child: View = getChildAt(i)
+                            Log.d("mmm", "is overlap loop")
+                            if (child != localView) {
+                                Log.d("mmm", "is overlap action")
+                                if (isOverlap(localView, child)) {
+                                    Log.d("mmm", "is overlap action = true")
+                                    isOverlappingChildItem = true
+                                    break
+                                }
+                            }
+                        }
+                        Log.d("mmm", "is overlap $isOverlappingChildItem")
+                        if (isOverlappingChildItem) {
+                            swapBackOrigin(localView)
+                        } else {
+                            val x: Float = dragEvent.x
+                            val y: Float = dragEvent.y
+                            localView.x = (x - localView.width / 2)
+                            localView.y = (y - localView.height / 2)
+                            listenerOnViewDrop?.invoke(
+                                localView,
+                                localView.viewIndex
+                            )
+                        }
 
+                    }
                 }
+            } else if(localView is View){
+                if(dragEvent == null) return false
+                when (dragEvent.action) {
+                    DragEvent.ACTION_DRAG_LOCATION -> {
+                        val x: Float = dragEvent.x
+                        (localView.parent as LinearLayout).get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
+                        (localView.parent as LinearLayout).get(1).requestLayout()
+                    }
+                }
+                return true
             }
+
             return true
         }
     }
@@ -171,7 +187,8 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         ) {
             return true
         }
-        val rect1 = Rect(v1.x.toInt(), v1.y.toInt(), (v1.x.toInt() + v1.width), (v1.y.toInt() + v1.height))
+        val rect1 =
+            Rect(v1.x.toInt(), v1.y.toInt(), (v1.x.toInt() + v1.width), (v1.y.toInt() + v1.height))
         val rect2 = Rect(v2.left, v2.top, v2.right, v2.bottom)
         Log.d("mmm", "is overlap $rect1 $rect2")
         return Rect.intersects(rect1, rect2) or Rect.intersects(rect2, rect1)

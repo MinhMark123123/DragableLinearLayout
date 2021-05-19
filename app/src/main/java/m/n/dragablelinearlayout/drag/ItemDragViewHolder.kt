@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Point
 import android.util.AttributeSet
+import android.view.DragEvent
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
@@ -65,8 +66,8 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : LinearLayout(
         isInSelectedMode = true
         val leftView = LeftViewDrag(context = context)
         val rightView = RightViewDrag(context = context)
-        leftView.setOnTouchListener(dragExpand)
-        rightView.setOnTouchListener(dragExpand)
+        leftView.setOnTouchListener(onTouchListener)
+        rightView.setOnTouchListener(onTouchListener)
         addView(leftView, 0)
         addView(rightView, childCount)
         requestLayout()
@@ -79,19 +80,46 @@ class ItemDragViewHolder(context: Context, attrs: AttributeSet?) : LinearLayout(
         removeViewAt(childCount - 1)
         requestLayout()
     }
+    private val onDragEvent  = object : OnDragListener {
+        override fun onDrag(p0: View?, dragEvent: DragEvent?): Boolean {
+            if(dragEvent == null) return false
+            when (dragEvent.action) {
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
+                    get(1).requestLayout()
+                }
+            }
+            return true
+        }
+    }
 
-    private val dragExpand = object : OnTouchListener {
+    private val onTouchListener = object : OnTouchListener {
         override fun onTouch(view: View?, event: MotionEvent?): Boolean {
             if (view == null) return false
             if (event == null) return false
             when (event.action) {
-                MotionEvent.ACTION_MOVE -> {
-                    get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
-                    get(1).requestLayout();
-                    return true
+                MotionEvent.ACTION_DOWN -> {
+                    val imageViewShadow = ImageView(getContext())
+                    imageViewShadow.setImageBitmap(loadBitmapFromView(view))
+                    val shadow = CustomViewShadow(View(context))
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        val data = ClipData.newPlainText(
+                            "dot",
+                            "Dot : $this"
+                        )
+
+                        view.startDragAndDrop(data, shadow, view, 0)
+                    } else {
+                        val data = ClipData.newPlainText(
+                            "dot",
+                            "Dot : $this"
+                        )
+                        view.startDrag(data, shadow, view, 0)
+                    }
+                    return false
                 }
                 else -> {
-                    return true
+                    return false
                 }
             }
         }
