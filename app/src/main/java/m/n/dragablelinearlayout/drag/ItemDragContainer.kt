@@ -11,6 +11,7 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import androidx.core.view.get
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
@@ -88,13 +89,17 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
         listenerOnViewDrop = listener
     }
 
+    private var mTouchY = 0f
     private val onDragListener: OnDragListener = object : OnDragListener {
         override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
             if (view == null) return false
             if (dragEvent == null) return false
             var localView = dragEvent.localState
             if (localView is ItemDragViewHolder) {
-                 localView = dragEvent.localState as ItemDragViewHolder
+                localView = dragEvent.localState as ItemDragViewHolder
+                mTouchY = dragEvent.y
+                Log.e("ttt", "onDrag: y = ${dragEvent.y} ;; x = ${dragEvent.x}")
+                localView.unSelectedMode()
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_EXITED -> {
                         if (localView.visibility != View.VISIBLE) {
@@ -110,20 +115,34 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                     }
                     DragEvent.ACTION_DRAG_LOCATION -> {
                         val x = dragEvent.x.roundToInt()
-                        val y: Float = dragEvent.y
-                        val translatedX = (x - (scrollView?.scrollX ?: 0)).toInt()
+                        var y: Float = dragEvent.y
+                        val translatedX = (x - (scrollView?.scrollX ?: 0))
                         val threshold = (dragEvent.localState as View).width / 2
                         // make a scrolling up due the y has passed the threshold
                         if (translatedX < threshold) {
                             // make a scroll up by 30 px
                             scrollView?.smoothScrollBy(-20, 0)
-                        } else if (translatedX + threshold > 500) {
+                        } else if (translatedX + threshold > 1000) {
                             // make a scroll down by 30 px
                             scrollView?.smoothScrollBy(20, 0)
                         }
+
+                        val hv = (dragEvent.localState as View).height
+                        val row = (y / (dragEvent.localState as View).height).toInt()
+                        Log.e("ttt", "onDrag: x= $x ; y = $y ;; hv = $hv")
+//                        if (2 * y > hv) {
+                        val deltaH =
+                            (abs(y - mTouchY) / (dragEvent.localState as View).height).roundToInt()
+                        y = ((hv + 16) * (deltaH + row)).toFloat()
+//                        y = ((hv + 16) * deltaH).toFloat()
+
+                        Log.e("ttt", "onDrag: newY = $y")
+//                        }
+
                         if (!isExited) {
+                            Log.e("ttt", "onDrag: isExited = $y")
                             localView.x = (x.toFloat() - localView.width / 2)
-                            localView.y = (y - localView.height / 2)
+                            localView.y = y
                         }
                     }
                     DragEvent.ACTION_DROP -> {
@@ -145,9 +164,26 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                             swapBackOrigin(localView)
                         } else {
                             val x: Float = dragEvent.x
-                            val y: Float = dragEvent.y
-                            localView.x = (x - localView.width / 2)
-                            localView.y = (y - localView.height / 2)
+                            var y: Float = dragEvent.y
+
+                            val hv = (dragEvent.localState as View).height
+                            val wv = (dragEvent.localState as View).width
+                            val row = (y / (dragEvent.localState as View).height).toInt()
+                            Log.e("ttt", "ACTION_DROP: y = $y ;; hv = $hv")
+                            val deltaH =
+                                ((abs(y - mTouchY)) / (dragEvent.localState as View).height).roundToInt()
+                            y = ((hv + 16) * (deltaH + row) + 16).toFloat()
+
+                            Log.e("ttt", "ACTION_DROP: newY = $y")
+
+                            if (x - wv < 0) {
+                                localView.x = 16f
+                            } else {
+                                localView.x = (x - localView.width / 2)
+                            }
+                            localView.y = y
+
+
                             listenerOnViewDrop?.invoke(
                                 localView,
                                 localView.viewIndex
@@ -156,13 +192,13 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
 
                     }
                 }
-            } else if(localView is View){
-                if(dragEvent == null) return false
+            } else if (localView is View) {
+                if (dragEvent == null) return false
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_LOCATION -> {
                         val x: Float = dragEvent.x
-                        (localView.parent as LinearLayout).get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
-                        (localView.parent as LinearLayout).get(1).requestLayout()
+                        (localView.parent as LinearLayout)[1].layoutParams.width += (x / abs(x)).roundToInt()
+                        (localView.parent as LinearLayout)[1].requestLayout()
                     }
                 }
                 return true
@@ -195,6 +231,6 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
     }
 
     private fun swapBackOrigin(view: View) {
-        view.animate().x(originX.toFloat()).y(originY.toFloat()).setDuration(200).start()
+        view.animate().x(originX).y(originY).setDuration(200).start()
     }
 }
