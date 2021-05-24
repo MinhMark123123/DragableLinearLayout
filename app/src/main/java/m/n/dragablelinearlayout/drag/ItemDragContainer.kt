@@ -10,7 +10,9 @@ import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.ViewAnimator
 import androidx.core.view.get
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
@@ -20,6 +22,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
     private var isExited = false
     private var originX = 0f
     private var originY = 0f
+    private var listBarrier = ArrayList<Int>()
 
     fun setOnViewSelectedListener(onViewSelected: (((View, Int) -> Unit))) {
         listenerOnViewSelected = onViewSelected
@@ -50,6 +53,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                 i
             )
         }
+        listBarrier.add(params.topMargin)
         addView(view, params)
         view.viewIndex = childCount - 1
     }
@@ -82,6 +86,9 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
             itView.layoutParams = params
             itView.invalidate()
         }
+        if (listBarrier.isNotEmpty()) {
+            listBarrier.removeLast()
+        }
     }
 
     fun onViewDrop(listener: (view: View, index: Int) -> Unit) {
@@ -94,7 +101,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
             if (dragEvent == null) return false
             var localView = dragEvent.localState
             if (localView is ItemDragViewHolder) {
-                 localView = dragEvent.localState as ItemDragViewHolder
+                localView = dragEvent.localState as ItemDragViewHolder
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_EXITED -> {
                         if (localView.visibility != View.VISIBLE) {
@@ -148,6 +155,11 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                             val y: Float = dragEvent.y
                             localView.x = (x - localView.width / 2)
                             localView.y = (y - localView.height / 2)
+                            val correctedValue = findClosedBarrier(dragEvent.y)
+                            if (localView.y.roundToInt() != correctedValue) {
+                                localView.animate().setDuration(100L).y(correctedValue.toFloat())
+                                    .start()
+                            }
                             listenerOnViewDrop?.invoke(
                                 localView,
                                 localView.viewIndex
@@ -156,20 +168,33 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
 
                     }
                 }
-            } else if(localView is View){
-                if(dragEvent == null) return false
+            } else if (localView is View) {
+                if (dragEvent == null) return false
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_LOCATION -> {
                         val x: Float = dragEvent.x
-                        (localView.parent as LinearLayout).get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
-                        (localView.parent as LinearLayout).get(1).requestLayout()
+                        (localView.parent as LinearLayout)[1].layoutParams.width += x.roundToInt()
+                        (localView.parent as LinearLayout)[1].requestLayout()
                     }
                 }
                 return true
             }
-
             return true
         }
+    }
+
+    private fun findClosedBarrier(y: Float): Int {
+        if (listBarrier.isEmpty()) return y.roundToInt()
+        if (listBarrier.size == 1) return listBarrier[0]
+        var minIndex = 0
+        var minValue = abs(y - listBarrier.first())
+        listBarrier.forEachIndexed { index, barrier ->
+            if (abs(y - barrier) <= minValue) {
+                minIndex = index
+                minValue = abs(y - barrier)
+            }
+        }
+        return minIndex
     }
 
     private fun isOverlap(v1: View, v2: View): Boolean {
