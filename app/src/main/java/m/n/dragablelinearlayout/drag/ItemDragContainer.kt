@@ -194,7 +194,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                 minValue = abs(y - barrier)
             }
         }
-        return minIndex
+        return listBarrier[minIndex]
     }
 
     private fun isOverlap(v1: View, v2: View): Boolean {
