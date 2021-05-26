@@ -7,11 +7,16 @@ import android.util.Log
 import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.ScaleAnimation
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
+import android.widget.Toast
 import androidx.core.view.get
+import kotlin.math.abs
 import kotlin.math.roundToInt
+
 
 class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout(context, attrs) {
     private var scrollView: HorizontalScrollView? = null
@@ -20,6 +25,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
     private var isExited = false
     private var originX = 0f
     private var originY = 0f
+    private var listBarrier = ArrayList<Int>()
 
     fun setOnViewSelectedListener(onViewSelected: (((View, Int) -> Unit))) {
         listenerOnViewSelected = onViewSelected
@@ -50,6 +56,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                 i
             )
         }
+        listBarrier.add(params.topMargin)
         addView(view, params)
         view.viewIndex = childCount - 1
     }
@@ -82,19 +89,26 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
             itView.layoutParams = params
             itView.invalidate()
         }
+        if (listBarrier.isNotEmpty()) {
+            listBarrier.removeLast()
+        }
     }
 
     fun onViewDrop(listener: (view: View, index: Int) -> Unit) {
         listenerOnViewDrop = listener
     }
 
+    var deltaX: Float = 0f
+    var deltaY: Float = 0f
+    var isHoldingLeftSide = false
+    var xMaxToScale = -1
     private val onDragListener: OnDragListener = object : OnDragListener {
         override fun onDrag(view: View?, dragEvent: DragEvent?): Boolean {
             if (view == null) return false
             if (dragEvent == null) return false
             var localView = dragEvent.localState
             if (localView is ItemDragViewHolder) {
-                 localView = dragEvent.localState as ItemDragViewHolder
+                localView = dragEvent.localState as ItemDragViewHolder
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_EXITED -> {
                         if (localView.visibility != View.VISIBLE) {
@@ -148,6 +162,11 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                             val y: Float = dragEvent.y
                             localView.x = (x - localView.width / 2)
                             localView.y = (y - localView.height / 2)
+                            val correctedValue = findClosedBarrier(dragEvent.y)
+                            if (localView.y.roundToInt() != correctedValue) {
+                                localView.animate().setDuration(100L).y(correctedValue.toFloat())
+                                    .start()
+                            }
                             listenerOnViewDrop?.invoke(
                                 localView,
                                 localView.viewIndex
@@ -156,20 +175,142 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
 
                     }
                 }
-            } else if(localView is View){
-                if(dragEvent == null) return false
+            } else if (localView is View) {
+                if (dragEvent == null) return false
+
+                val parentView = (localView.parent as LinearLayout)[1]
+
                 when (dragEvent.action) {
+                    DragEvent.ACTION_DRAG_STARTED -> {
+                        deltaX = dragEvent.x
+                        deltaY = dragEvent.y
+                        val viewItem = localView.parent as ItemDragViewHolder
+                        xMaxToScale = findMaxScaleX(viewItem, viewItem.viewIndex)
+                        isHoldingLeftSide =
+                            localView.x <= (localView.parent as ItemDragViewHolder).x.roundToInt()
+                        if (isHoldingLeftSide) {
+                            parentView.pivotX = parentView.pivotX + parentView.width
+                        }
+                    }
                     DragEvent.ACTION_DRAG_LOCATION -> {
                         val x: Float = dragEvent.x
-                        (localView.parent as LinearLayout).get(1).getLayoutParams().width += (x / Math.abs(x)).roundToInt()
-                        (localView.parent as LinearLayout).get(1).requestLayout()
+                        Log.e("mmmm", "debug max scale $xMaxToScale")
+                        if (x > deltaX) {
+                            //drag right
+                            val amountIncrease = (x / abs(
+                                x
+                            )).roundToInt()
+                            if (isHoldingLeftSide) {
+                                parentView.layoutParams.width -= amountIncrease
+                                (localView.parent as ItemDragViewHolder).x -= amountIncrease
+                            } else {
+                                val viewFather = (localView.parent as ItemDragViewHolder)
+                                val valueCompare =
+                                    (viewFather.x + viewFather.width - localView.width * 2 + amountIncrease)
+                                Log.e(
+                                    "mmmm",
+                                    "debug drag right hold right value $valueCompare and $xMaxToScale"
+                                )
+                                if (xMaxToScale != -1) {
+                                    if (valueCompare < abs(xMaxToScale)) {
+                                        parentView.layoutParams.width += amountIncrease
+                                    }
+                                } else {
+                                    parentView.layoutParams.width += amountIncrease
+                                }
+                            }
+
+                        } else {
+                            //drag left
+                            if (isHoldingLeftSide) {
+                                if (x != 0f) {
+                                    val amountIncrease = (x / abs(
+                                        x
+                                    )).roundToInt()
+                                    val valueCompare =
+                                        ((localView.parent as ItemDragViewHolder).x - localView.x - amountIncrease)
+                                    Log.e(
+                                        "mmmm",
+                                        "debug drag left hold left value $valueCompare and $xMaxToScale"
+                                    )
+                                    if (valueCompare > abs(xMaxToScale)) {
+                                        parentView.layoutParams.width += amountIncrease
+                                        (localView.parent as LinearLayout).x -= amountIncrease
+                                    }
+                                    if (xMaxToScale != -1) {
+                                        if (valueCompare > abs(xMaxToScale)) {
+                                            parentView.layoutParams.width += amountIncrease
+                                            (localView.parent as LinearLayout).x -= amountIncrease
+                                        }
+                                    } else {
+                                        parentView.layoutParams.width += amountIncrease
+                                        (localView.parent as LinearLayout).x -= amountIncrease
+                                    }
+                                }
+                            } else {
+                                parentView.layoutParams.width -= (x / Math.abs(
+                                    x
+                                )).roundToInt()
+                            }
+                        }
+
+                        parentView.requestLayout()
+                        deltaX = x
+                    }
+                    DragEvent.ACTION_DRAG_EXITED -> {
+                        parentView.pivotX = 0f
+                        /* if(isReachBand){
+                             localView.animate().setDuration(100L).x((localView.parent as ItemDragViewHolder).x + localView.width)
+                                 .start()
+                             isReachBand = false
+                         }*/
+                    }
+                    DragEvent.ACTION_DROP -> {
+                        parentView.pivotX = 0f
+                        /* if (isReachBand) {
+                             (localView.parent as ItemDragViewHolder).animate().setDuration(100L)
+                                 .x((localView.parent as ItemDragViewHolder).x + localView.width)
+                                 .start()
+                             isReachBand = false
+                         }
+                         isReachBand = false*/
                     }
                 }
                 return true
             }
-
             return true
         }
+    }
+
+    private fun findMaxScaleX(viewRow: View, indexInclude: Int): Int {
+        val xV = viewRow.x.roundToInt()
+        val yV = viewRow.y.roundToInt()
+        (0 until childCount).forEach { index ->
+            if (get(index).y.roundToInt() == yV && index != indexInclude) {
+                if (get(index).x < xV) {
+                    //xV is on the right of view , band left side
+                    return -(get(index).x + get(index).width).roundToInt()
+                } else {
+                    //xV is on the right of view , band right side
+                    return get(index).x.roundToInt()
+                }
+            }
+        }
+        return -1
+    }
+
+    private fun findClosedBarrier(y: Float): Int {
+        if (listBarrier.isEmpty()) return y.roundToInt()
+        if (listBarrier.size == 1) return listBarrier[0]
+        var minIndex = 0
+        var minValue = abs(y - listBarrier.first())
+        listBarrier.forEachIndexed { index, barrier ->
+            if (abs(y - barrier) <= minValue) {
+                minIndex = index
+                minValue = abs(y - barrier)
+            }
+        }
+        return listBarrier[minIndex]
     }
 
     private fun isOverlap(v1: View, v2: View): Boolean {
