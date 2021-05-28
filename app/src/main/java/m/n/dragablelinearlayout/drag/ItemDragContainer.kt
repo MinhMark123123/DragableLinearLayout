@@ -7,12 +7,9 @@ import android.util.Log
 import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.Animation
-import android.view.animation.ScaleAnimation
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.core.view.get
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -177,22 +174,20 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                 }
             } else if (localView is View) {
                 if (dragEvent == null) return false
-
                 val parentView = (localView.parent as LinearLayout)[1]
-
                 when (dragEvent.action) {
                     DragEvent.ACTION_DRAG_STARTED -> {
                         deltaX = dragEvent.x
                         deltaY = dragEvent.y
                         val viewItem = localView.parent as ItemDragViewHolder
                         xMaxToScale = findMaxScaleX(viewItem, viewItem.viewIndex)
-                        isHoldingLeftSide =
-                            localView.x <= (localView.parent as ItemDragViewHolder).x.roundToInt()
+                        isHoldingLeftSide = localView is LeftViewDrag
                         if (isHoldingLeftSide) {
                             parentView.pivotX = parentView.pivotX + parentView.width
                         }
                     }
                     DragEvent.ACTION_DRAG_LOCATION -> {
+                        isHoldingLeftSide = localView is LeftViewDrag
                         val x: Float = dragEvent.x
                         Log.e("mmmm", "debug max scale $xMaxToScale")
                         if (x > deltaX) {
@@ -212,7 +207,7 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                                     "debug drag right hold right value $valueCompare and $xMaxToScale"
                                 )
                                 if (xMaxToScale != -1) {
-                                    if (valueCompare < abs(xMaxToScale)) {
+                                    if (valueCompare < abs(xMaxToScale) || xMaxToScale < 0) {
                                         parentView.layoutParams.width += amountIncrease
                                     }
                                 } else {
@@ -259,21 +254,9 @@ class ItemDragContainer(context: Context, attrs: AttributeSet?) : RelativeLayout
                     }
                     DragEvent.ACTION_DRAG_EXITED -> {
                         parentView.pivotX = 0f
-                        /* if(isReachBand){
-                             localView.animate().setDuration(100L).x((localView.parent as ItemDragViewHolder).x + localView.width)
-                                 .start()
-                             isReachBand = false
-                         }*/
                     }
                     DragEvent.ACTION_DROP -> {
                         parentView.pivotX = 0f
-                        /* if (isReachBand) {
-                             (localView.parent as ItemDragViewHolder).animate().setDuration(100L)
-                                 .x((localView.parent as ItemDragViewHolder).x + localView.width)
-                                 .start()
-                             isReachBand = false
-                         }
-                         isReachBand = false*/
                     }
                 }
                 return true
